@@ -1,5 +1,5 @@
 # Bellabeat_Case_Study
- 📊 Bellabeat Case Study – Google Data Analytics Capstone
+ 📊 Bellabeat Case Study 
 📌 Project Overview
 
 This project is part of the Google Data Analytics Capstone case study.
