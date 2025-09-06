@@ -1,0 +1,174 @@
+---
+title: "Bellabeat_case_study_report"
+author: "darshan"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r installing packages}
+
+# Install necessary packages
+install.packages("tidyverse")
+install.packages("lubridate")
+install.packages("skimr")
+install.packages("janitor")
+
+# Load libraries
+library(tidyverse)
+library(lubridate)
+library(skimr)
+library(janitor)
+
+```
+
+```{r loading datasets}
+#loading datasets
+
+daily_activity <- clean_names(daily_activity)
+sleep_day <- clean_names(sleep_day)
+weight_log <- clean_names(weight_log)
+hourly_steps <- clean_names(hourly_steps)
+hourly_calories <- clean_names(hourly_calories)
+
+
+daily_activity <- read_csv("dailyActivity.csv")
+sleep_day <- read_csv("sleepDay.csv")
+weight_log <- read_csv("weightLogInfo.csv")
+hourly_steps <- read_csv("hourlySteps.csv")
+hourly_calories <- read_csv("hourlyCalories.csv")
+```
+
+
+```{r}
+#checking string type
+str(daily_activity)
+str(sleep_day)
+str(weight_log)
+str(hourly_steps)
+str(hourly_calories)
+
+#checks missing values
+sum(is.na(sleep_day))
+
+#process phase cleaning and filtering data
+
+# Clean column names (checks correct format of writing column names)
+daily_activity <- clean_names(daily_activity)
+sleep_day <- clean_names(sleep_day)
+weight_log <- clean_names(weight_log)
+hourly_steps <- clean_names(hourly_steps)
+hourly_calories <- clean_names(hourly_calories)
+#checks clean names
+colnames(daily_activity)
+colnames(sleep_day)
+
+#convert dates
+daily_activity <- daily_activity %>%
+  mutate(activity_date = mdy(activity_date))
+
+sleep_day <- sleep_day %>%
+  mutate(sleep_day = mdy_hms(sleep_day))
+
+weight_log <- weight_log %>%
+  mutate(date = mdy_hms(date))
+
+hourly_steps <- hourly_steps %>%
+  mutate(activity_hour = mdy_hms(activity_hour))
+
+hourly_calories <- hourly_calories %>%
+  mutate(activity_hour = mdy_hms(activity_hour))
+
+#removing duplicates and missing values
+sleep_day <- sleep_day %>% distinct()
+sum(duplicated(sleep_day))
+sleep_day <- sleep_day %>% drop_na()
+
+#merge datasets
+daily_sleep_activity <- daily_activity %>%
+  left_join(sleep_day, 
+            by = c("id" = "id", "activity_date" = "sleep_day"))
+head(daily_sleep_activity)
+
+#add columns weekday
+daily_activity <- daily_activity %>%
+  mutate(weekday = weekdays(activity_date))
+
+# Extract hour from timestamp
+hourly_steps <- hourly_steps %>%
+  mutate(hour = hour(activity_hour))
+
+
+#analyze phase
+
+# Average steps across all users = **7637.911**
+mean(daily_activity$total_steps)
+
+# Average steps per user (Are users meeting 10,000 steps/day?)
+daily_activity %>%
+  group_by(id) %>%
+  summarise(avg_steps_per_user = mean(total_steps)) %>%
+  arrange(desc(avg_steps_per_user))
+#output
+#id avg_steps_per_user
+#<dbl>              <dbl>
+#1 8877689391             16040.
+#2 8053475328             14763.
+#3 1503960366             12117.
+#4 2022484408             11371.
+#5 7007744171             11323.
+#6 3977333714             10985.
+#7 4388161847             10814.
+#8 6962181067              9795.
+#9 2347167796              9520.
+#10 7086361926              9372.
+
+##Sedentary vs Active Minutes (: Do users spend more time sedentary than active?)
+# Average minutes per activity type
+activity_summary <- daily_sleep_activity %>%
+  summarise(
+    sedentary_avg = mean(sedentary_minutes),
+    lightly_active_avg = mean(lightly_active_minutes),
+    fairly_active_avg = mean(fairly_active_minutes),
+    very_active_avg = mean(very_active_minutes)
+  )
+#output
+#sedentary_avg lightly_active_avg fairly_active_avg very_active_avg
+#<                                   
+#  991.               193.              13.6            21.2
+
+#Calories vs Steps (Correlation)=0.5915681 (Do more steps = more calories burned?)
+cor(daily_activity$total_steps, daily_activity$calories)
+
+#Sleep Analysis
+# Average sleep duration = **6.98622**
+mean(daily_sleep_activity$total_minutes_asleep, na.rm = TRUE) / 60  # in hours
+
+# Sleep consistency per user
+daily_sleep_activity %>%
+  group_by(id) %>%
+  summarise(avg_sleep_hours_per_user = mean(total_minutes_asleep, na.rm=TRUE)/60) %>%
+  arrange(desc(avg_sleep_hours_per_user))
+
+#Weekday vs Weekend Patterns
+daily_activity <- daily_activity %>%
+  mutate(day_type = ifelse(weekday %in% c("Saturday","Sunday"), "Weekend", "Weekday")) %>%
+  group_by(day_type) %>%
+  summarise(avg_steps = mean(total_steps), avg_calories = mean(calories))
+
+
+```
+
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
